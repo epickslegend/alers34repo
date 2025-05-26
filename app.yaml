@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-app
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: node }
+  template:
+    metadata: { labels: { app: node } }
+    spec:
+      containers:
+      - name: web
+        image: alers/alers34repo:latest
+        ports: [ { containerPort: 3000 } ]
+        env:
+        - name: PORT
+          value: "3000"
+        - name: MONGO_URI
+          value: mongodb://mongo-svc:27017/devops
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-svc
+  namespace: devops
+spec:
+  selector: { app: node }
+  ports: [ { port: 80, targetPort: 3000 } ]
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: node-ingress
+  namespace: devops
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: public
+  tls:
+  - hosts: [ "node.local" ]
+    secretName: selfsigned-cert
+  rules:
+  - host: node.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: node-svc
+            port:
+              number: 80
